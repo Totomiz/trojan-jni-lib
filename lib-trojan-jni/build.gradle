@@ -1,0 +1,147 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    compileSdk 32
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 32
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+
+        compileOptions {
+            sourceCompatibility JavaVersion.VERSION_1_8
+            targetCompatibility JavaVersion.VERSION_1_8
+        }
+    }
+    sourceSets.main {
+        jni.srcDirs = []
+        // disables the default ndk-build call (with on-the-fly Android.mk files)
+        jniLibs.srcDir 'src/main/libs'
+//        manifest.srcFile = ""
+    }
+
+    packagingOptions {
+        exclude 'META-INF/*'
+        exclude 'META-INF'
+        exclude 'R.txt'
+    }
+
+    task renameExtractAar(dependsOn: 'assembleRelease', type: Copy) {
+        outputs.upToDateWhen { false }
+        println(project.buildDir.getAbsolutePath())
+        File processAarFile = new File(project.buildDir, "outputs/aar/mylibrary-release.aar")
+        File workDir = new File(project.buildDir, "outputs/aar/workDir")
+
+        //解压到指定的文件夹下
+        from zipTree(processAarFile)
+        into workDir
+
+        doFirst {
+            if (workDir.exists()) {
+                workDir.deleteDir()
+            }
+        }
+
+        doLast {
+            //将classes.jar重命名并移动到libs目录下
+            File classesJar = new File(workDir, "classes.jar")
+            println(classesJar.exists())
+            File renameJar = new File(workDir, "libs/classes.jar")
+
+            classesJar.renameTo(renameJar)
+            File[] files = workDir.listFiles()
+            for (i in 0..<files.length) {
+               File f= files[i]
+                println("files[i]+${f.name}")
+//                if(f.name.equalsIgnoreCase("jni")||f.name.contains("Manifest")){
+                if(f.name.equalsIgnoreCase("jni")){
+                    println("files[i]+${f.name} skip")
+                }else{
+                    f.delete()
+                }
+
+                if(f.name.equalsIgnoreCase("META-INF")){
+                    println("files[i]+${f.name}  deectt = ${f.delete()}")
+                }
+            }
+//            File rTxt = new File(workDir.parent, "AndroidManifest.xml")
+//            Copy{
+//                from workDir.parent.file("AndroidManifest.xml")
+//                into workDir
+//            }
+
+//            tasks.register('copyReport', Copy) {
+//                from workDir.parent.file("AndroidManifest.xml")
+//                into workDir
+//            }
+
+
+//            File rTxt = new File(workDir.parent, "AndroidManifest.xml")
+            //去除R.txt文件
+//            File rTxt = new File(workDir, "R.txt")
+//            rTxt.delete()
+//            File meta = new File(workDir, "META-INF")
+//            meta.delete()
+
+        }
+    }
+
+//    task copyReport3(dependsOn: renameExtractAar,type: Copy) {
+    task copyReport3(type: Copy) {
+
+        doFirst {
+            File workDir = new File(project.buildDir, "outputs/aar/workDir")
+            File[] files = workDir.listFiles()
+            for (i in 0..<files.length) {
+                File f= files[i]
+                if(f.name.equalsIgnoreCase("META-INF")){
+                    println("files[i]+${f.name}  deectt = ${f.delete()}")
+                }
+            }
+        }
+
+        from "$buildDir/outputs/aar/AndroidManifest.xml"
+        into "$buildDir/outputs/aar/workDir"
+    }
+
+    task outAar( type: Zip) {
+        outputs.upToDateWhen { false }
+
+        //aar输出路径
+        File aarDir = new File(project.buildDir, "outputs/aar")
+
+        //aar源文件夹
+        File workDir = new File(aarDir, "workDir")
+//        File md = new File(project.buildDir, "outputs/aar/AndroidManifest.xml")
+        from workDir
+
+        //重命名AAR
+        //archiveVersion 10
+        archiveName "mytojanlibs-release.aar"
+        destinationDir aarDir
+    }
+
+
+}
+
+
+dependencies {
+
+    implementation 'androidx.appcompat:appcompat:1.4.2'
+    implementation 'com.google.android.material:material:1.6.1'
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+}
